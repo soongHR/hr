@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MISA Project Tracker</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Import Map for React & Firebase -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.309.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+      }
+    }
+    </script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body { background-color: #f8fafc; }
+        
+        /* Animation Utilities */
+        .animate-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+        import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+        import { 
+            Calendar, CheckCircle2, Clock, AlertTriangle, Presentation, Layout, 
+            ListTodo, PieChart, DollarSign, TrendingUp, Plus, X, Edit2, 
+            Trash2, MessageSquare, ChevronRight, Target, ShieldAlert, BarChart3, 
+            CheckSquare, ArrowRight, ArrowDown, ChevronDown, ChevronUp, ZoomIn, 
+            ZoomOut, Save, Loader2, Check 
+        } from 'lucide-react';
+
+        // --- CONFIGURATION ---
+        // Your specific Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD4t4skdNWix1MSAF9Y1ArZF5pWqIILBRo",
+            authDomain: "hrtrackerproject.firebaseapp.com",
+            projectId: "hrtrackerproject",
+            storageBucket: "hrtrackerproject.firebasestorage.app",
+            messagingSenderId: "713971536964",
+            appId: "1:713971536964:web:1282bf31f33712ced4d811"
+        };
+
+        const appId = 'misa-tracker-v1';
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- DATA ---
+        const INITIAL_PROJECT = {
+            id: 'p1',
+            name: 'Vietnam HR & Payroll System (MISA)',
+            budget: 5000,
+            spent: 1500,
+            startDate: '2025-10-01',
+            endDate: '2026-01-31',
+            nextMilestoneTitle: 'Training & Testing',
+            nextMilestoneDate: 'Dec 2025',
+            risks: [
+                { id: 'r1', title: 'Data Migration Accuracy', level: 'medium', mitigation: 'Double parallel run in Dec 2025' },
+                { id: 'r2', title: 'User Adoption', level: 'low', mitigation: 'Comprehensive training sessions in Phase 3' }
+            ],
+            phases: [
+                {
+                    id: 'ph1',
+                    title: 'Planning & Kickoff',
+                    timeline: 'Oct 2025',
+                    status: 'completed',
+                    description: 'Assign leads, confirm scope, finalize package.',
+                    remarks: 'Kickoff meeting successful. Vendor contract signed and deposit paid.',
+                    tasks: [
+                        { id: 't1-1', title: 'Assign project leads for each center', status: 'completed' },
+                        { id: 't1-2', title: 'Confirm project scope', status: 'completed' },
+                        { id: 't1-3', title: 'Finalize MISA package details', status: 'completed' },
+                    ]
+                },
+                {
+                    id: 'ph2',
+                    title: 'System Setup & Config',
+                    timeline: 'Oct–Nov 2025',
+                    status: 'in-progress',
+                    description: 'Configure structure, formulas, and SHUI.',
+                    remarks: 'Salary formulas under review by Finance team. Expected sign-off by Friday.',
+                    tasks: [
+                        { id: 't2-1', title: 'Configure payroll structure', status: 'in-progress' },
+                        { id: 't2-2', title: 'Input salary formulas', status: 'not-started' },
+                        { id: 't2-3', title: 'Setup SHUI settings', status: 'not-started' },
+                    ]
+                },
+                {
+                    id: 'ph3',
+                    title: 'Training & Testing',
+                    timeline: 'Dec 2025',
+                    status: 'not-started',
+                    description: 'User training and system testing.',
+                    remarks: '',
+                    tasks: [
+                        { id: 't3-1', title: 'Conduct user training sessions', status: 'not-started' },
+                        { id: 't3-2', title: 'Thorough system testing', status: 'not-started' },
+                    ]
+                },
+                {
+                    id: 'ph4',
+                    title: 'Go Live',
+                    timeline: 'Jan 2026',
+                    status: 'not-started',
+                    description: 'Final deployment and first payroll run.',
+                    remarks: '',
+                    tasks: [
+                        { id: 't4-1', title: 'System Deployment', status: 'not-started' },
+                        { id: 't4-2', title: 'Process first payroll run', status: 'not-started' },
+                    ]
+                }
+            ]
+        };
+
+        // --- COMPONENTS ---
+        const StatusBadge = ({ status, theme = 'light' }) => {
+            const isDark = theme === 'dark';
+            const styles = {
+                'not-started': isDark ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200',
+                'in-progress': isDark ? 'bg-blue-900/80 text-blue-200 border-blue-500/50' : 'bg-blue-50 text-blue-700 border-blue-200',
+                'completed': isDark ? 'bg-emerald-900/50 text-emerald-200 border-emerald-800' : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                'delayed': isDark ? 'bg-red-900/50 text-red-200 border-red-800' : 'bg-red-50 text-red-700 border-red-200',
+            };
+            const labels = { 'not-started': 'Upcoming', 'in-progress': 'Active', 'completed': 'Done', 'delayed': 'Delayed' };
+            return <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide border ${styles[status]}`}>{labels[status]}</span>;
+        };
+
+        const RiskBadge = ({ level }) => {
+            const styles = { low: 'bg-yellow-100 text-yellow-800', medium: 'bg-orange-100 text-orange-800', high: 'bg-red-100 text-red-800' };
+            return <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${styles[level]}`}>{level}</span>;
+        };
+
+        const ProgressBar = ({ progress, dark = false }) => (
+            <div className={`w-full rounded-full h-3 ${dark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                <div className="bg-blue-500 h-3 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+            </div>
+        );
+
+        // --- APP ---
+        function ProjectTracker() {
+            const [project, setProject] = useState(INITIAL_PROJECT);
+            const [mode, setMode] = useState('edit');
+            const [presentationSlide, setPresentationSlide] = useState(0);
+            const [expandedPhaseId, setExpandedPhaseId] = useState(null);
+            const [zoomLevel, setZoomLevel] = useState(1);
+            const [user, setUser] = useState(null);
+            const [isSaving, setIsSaving] = useState(false);
+            const [saveStatus, setSaveStatus] = useState('idle');
+            const [permissionError, setPermissionError] = useState(false);
+
+            const totalTasks = project.phases.reduce((acc, ph) => acc + ph.tasks.length, 0);
+            const completedTasks = project.phases.reduce((acc, ph) => acc + ph.tasks.filter(t => t.status === 'completed').length, 0);
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            const budgetUtilization = Math.round((project.spent / project.budget) * 100);
+
+            // --- Authentication ---
+            useEffect(() => {
+                const unsubscribe = onAuthStateChanged(auth, setUser);
+                signInAnonymously(auth).catch(console.error);
+                return () => unsubscribe();
+            }, []);
+
+            // --- Load Data ---
+            useEffect(() => {
+                if (!user) return;
+                const loadData = async () => {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'projectData');
+                        const docSnap = await getDoc(docRef);
+                        if (docSnap.exists()) {
+                            setProject(docSnap.data());
+                        }
+                        setPermissionError(false);
+                    } catch (err) { 
+                        console.error("Error loading data:", err);
+                        if (err.code === 'permission-denied') {
+                            setPermissionError(true);
+                        }
+                    }
+                };
+                loadData();
+            }, [user]);
+
+            // --- Save Data ---
+            const handleSave = async () => {
+                if (!user) {
+                    alert("Waiting for connection... please try again in a moment.");
+                    return;
+                }
+                setIsSaving(true);
+                setSaveStatus('idle');
+                setPermissionError(false);
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'projectData'), project);
+                    setSaveStatus('success');
+                    setTimeout(() => setSaveStatus('idle'), 2000);
+                } catch (err) {
+                    console.error("Error saving data:", err);
+                    setSaveStatus('error');
+                    if (err.code === 'permission-denied') {
+                        setPermissionError(true);
+                    } else {
+                        alert("Error saving: " + err.message);
+                    }
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            const handleProjectUpdate = (field, value) => setProject(prev => ({ ...prev, [field]: value }));
+            
+            const toggleTaskStatus = (phaseId, taskId) => {
+                if (mode === 'presentation') return;
+                setProject(prev => {
+                    const newPhases = prev.phases.map(p => {
+                        if (p.id !== phaseId) return p;
+                        const newTasks = p.tasks.map(t => {
+                            if (t.id !== taskId) return t;
+                            const nextStatus = t.status === 'completed' ? 'not-started' : 'completed';
+                            return { ...t, status: nextStatus };
+                        });
+                        const allComplete = newTasks.length > 0 && newTasks.every(t => t.status === 'completed');
+                        const someComplete = newTasks.some(t => t.status === 'completed');
+                        let newPhaseStatus = p.status;
+                        if (allComplete) newPhaseStatus = 'completed';
+                        else if (someComplete) newPhaseStatus = 'in-progress';
+                        else newPhaseStatus = 'not-started';
+                        return { ...p, tasks: newTasks, status: newPhaseStatus };
+                    });
+                    return { ...prev, phases: newPhases };
+                });
+            };
+
+            const handlePhaseUpdate = (phaseId, field, value) => {
+                setProject(prev => ({ ...prev, phases: prev.phases.map(p => p.id === phaseId ? { ...p, [field]: value } : p) }));
+            };
+
+            const handleTaskTitleUpdate = (phaseId, taskId, newTitle) => {
+                setProject(prev => ({ ...prev, phases: prev.phases.map(p => { if (p.id !== phaseId) return p; return { ...p, tasks: p.tasks.map(t => t.id === taskId ? { ...t, title: newTitle } : t) }; }) }));
+            };
+
+            const handleAddTask = (phaseId) => {
+                const newTask = { id: `new-${Date.now()}`, title: 'New Task', status: 'not-started' };
+                setProject(prev => ({ ...prev, phases: prev.phases.map(p => p.id === phaseId ? { ...p, tasks: [...p.tasks, newTask] } : p) }));
+            };
+
+            const handleDeleteTask = (phaseId, taskId) => {
+                setProject(prev => ({ ...prev, phases: prev.phases.map(p => p.id === phaseId ? { ...p, tasks: p.tasks.filter(t => t.id !== taskId) } : p) }));
+            };
+
+            const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.1, 2));
+            const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
+
+            if (mode === 'presentation') {
+                return (
+                    <div className="fixed inset-0 bg-slate-900 text-white z-40 flex flex-col overflow-hidden animate-in fade-in duration-300">
+                        {permissionError && (
+                            <div className="bg-red-600 text-white px-4 py-2 text-center text-sm font-bold z-50">
+                                ⚠️ Database Permission Denied. Please check your Firebase Console &gt; Firestore Database &gt; Rules.
+                            </div>
+                        )}
+                        <div className="px-8 py-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-900/90 backdrop-blur-sm z-50">
+                            <div><div className="text-blue-400 font-bold tracking-widest text-xs uppercase mb-1">Project Status Report</div><h1 className="text-2xl font-bold flex items-center gap-3 text-white">{project.name}</h1></div>
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center bg-slate-800 rounded-full border border-slate-700 p-1">
+                                    <button onClick={handleZoomOut} className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white"><ZoomOut className="w-4 h-4" /></button>
+                                    <span className="w-12 text-center text-xs font-mono text-slate-400">{Math.round(zoomLevel * 100)}%</span>
+                                    <button onClick={handleZoomIn} className="p-2 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white"><ZoomIn className="w-4 h-4" /></button>
+                                </div>
+                                <button onClick={() => { setMode('edit'); setZoomLevel(1); }} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 border border-slate-700"><X className="w-4 h-4" /> Exit</button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-auto bg-slate-900 relative">
+                            <div className="origin-top-center transition-transform duration-200 ease-out p-8 min-h-full" style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center', width: `${100 / zoomLevel}%`, height: `${100 / zoomLevel}%` }}>
+                                {presentationSlide === 0 && (
+                                    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
+                                        <div className="lg:col-span-1 space-y-6">
+                                            <div className="bg-slate-800/50 p-8 rounded-3xl border border-slate-700 backdrop-blur-sm"><h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-3">Overall Completion</h3><div className="flex items-end gap-4 mb-4"><span className="text-5xl font-bold text-white tracking-tighter">{progress}%</span><span className="text-emerald-400 text-base font-medium mb-2 flex items-center gap-2"><TrendingUp className="w-5 h-5" /> On Track</span></div><ProgressBar progress={progress} dark /><div className="mt-6 flex justify-between text-sm text-slate-400"><span>Tasks Completed</span><span className="text-white font-mono">{completedTasks} / {totalTasks}</span></div></div>
+                                            <div className="bg-slate-800/50 p-8 rounded-3xl border border-slate-700 backdrop-blur-sm"><h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-4">Budget Utilization</h3><div className="flex justify-between items-end mb-4"><div><div className="text-3xl font-bold text-white tracking-tight">SGD {project.spent.toLocaleString()}</div><div className="text-slate-400 text-sm mt-1">Spent to date</div></div><div className="text-right"><div className="text-xl font-semibold text-slate-300">SGD {project.budget.toLocaleString()}</div><div className="text-slate-500 text-xs mt-1">Total Budget</div></div></div><div className="w-full bg-slate-700 rounded-full h-3"><div className={`h-3 rounded-full ${budgetUtilization > 90 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${budgetUtilization}%` }}></div></div></div>
+                                        </div>
+                                        <div className="lg:col-span-2 space-y-6">
+                                            <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/30 p-8 rounded-3xl"><h3 className="text-blue-300 text-sm font-bold uppercase tracking-wider mb-4 flex items-center gap-2"><MessageSquare className="w-5 h-5" /> Executive Summary</h3><p className="text-xl leading-relaxed text-slate-100 font-light">"Project is currently proceeding as per the approved timeline. Phase 1 is complete. We are currently in Phase 2 focusing on System Configuration. No major blockers identified."</p></div>
+                                            <div className="grid grid-cols-2 gap-6"><div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700"><h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-3">Current Phase</h3><div className="text-2xl font-bold text-white mb-1">System Setup & Config</div><div className="text-blue-400 text-base">Target: Nov 2025</div></div><div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700"><h3 className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-3">Next Milestone</h3><div className="text-2xl font-bold text-white mb-1">{project.nextMilestoneTitle}</div><div className="text-purple-400 text-base">Target: {project.nextMilestoneDate}</div></div></div>
+                                        </div>
+                                    </div>
+                                )}
+                                {presentationSlide === 1 && (
+                                    <div className="max-w-5xl mx-auto h-full pb-20">
+                                        <div className="mb-8 flex items-center justify-between"><h2 className="text-2xl font-bold">Execution Roadmap</h2><div className="flex gap-4 text-sm"><span className="flex items-center gap-2 text-slate-400"><span className="w-3 h-3 rounded-full bg-emerald-500"></span> Completed</span><span className="flex items-center gap-2 text-white"><span className="w-3 h-3 rounded-full bg-blue-500"></span> Active</span><span className="flex items-center gap-2 text-slate-500"><span className="w-3 h-3 rounded-full border border-slate-500 border-dashed"></span> Upcoming</span></div></div>
+                                        <div className="relative pl-10 border-l-2 border-slate-800 ml-5 space-y-12">
+                                            {project.phases.map((phase, idx) => {
+                                                const isCompleted = phase.status === 'completed';
+                                                const isActive = phase.status === 'in-progress';
+                                                const isUpcoming = phase.status === 'not-started';
+                                                const completedTasksCount = phase.tasks.filter(t => t.status === 'completed').length;
+                                                const isExpanded = expandedPhaseId === phase.id;
+                                                return (
+                                                    <div key={phase.id} className="relative">
+                                                        <div className={`absolute -left-[58px] top-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-4 border-slate-900 z-10 ${isCompleted ? 'bg-emerald-500 text-white' : isActive ? 'bg-blue-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.6)]' : 'bg-slate-800 text-slate-500'}`}>{isCompleted ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}</div>
+                                                        <div className={`p-6 rounded-2xl border relative transition-all duration-300 flex flex-col md:flex-row gap-8 ${isCompleted ? 'bg-emerald-900/10 border-emerald-500/30 backdrop-blur-sm' : isActive ? 'bg-slate-800/90 border-blue-400 ring-1 ring-blue-500 shadow-2xl shadow-blue-900/20' : 'bg-slate-900/50 border-slate-700 border-dashed opacity-70'}`}>
+                                                            <div className="flex-1">
+                                                                <div className="flex justify-between items-start mb-3"><h3 className={`text-xl font-bold ${isUpcoming ? 'text-slate-400' : 'text-white'}`}>{phase.title}</h3><StatusBadge status={phase.status} theme="dark" /></div>
+                                                                <p className="text-slate-500 text-sm mb-4 flex items-center gap-2 font-medium"><Calendar className="w-4 h-4" /> {phase.timeline}</p>
+                                                                <p className="text-slate-400 text-sm mb-5 leading-relaxed">{phase.description}</p>
+                                                                <div onClick={(e) => { e.stopPropagation(); setExpandedPhaseId(isExpanded ? null : phase.id); }} className="flex items-center gap-3 text-xs font-mono text-slate-500"><span className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer transition-colors group ${isActive ? 'bg-blue-900/30 text-blue-200 border border-blue-800 hover:bg-blue-900/50' : 'bg-slate-800 border border-slate-700 hover:bg-slate-700'}`}><CheckSquare className="w-4 h-4" /> {completedTasksCount}/{phase.tasks.length} Tasks {isExpanded ? <ChevronUp className="w-3 h-3 ml-1 opacity-70" /> : <ChevronDown className="w-3 h-3 ml-1 opacity-70" />}</span>{isActive && <span className="text-blue-400 animate-pulse flex items-center gap-2"><Clock className="w-3 h-3" /> In Progress</span>}</div>
+                                                                {isExpanded && (<div className="mt-5 pt-5 border-t border-slate-700/50 space-y-2 animate-in slide-in-from-top-2">{phase.tasks.map(t => (<div key={t.id} className="flex items-center gap-3 text-sm text-slate-300 p-2 rounded hover:bg-slate-800/30">{t.status === 'completed' ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0"/> : <div className="w-4 h-4 rounded-full border-2 border-slate-600 shrink-0"/>}<span className={t.status === 'completed' ? 'line-through opacity-50' : ''}>{t.title}</span></div>))}</div>)}
+                                                            </div>
+                                                            <div className={`md:w-1/3 border-l ${isActive ? 'border-blue-800/50' : 'border-slate-700/50'} pl-6 flex flex-col justify-start`}><div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Status / Remarks</div><div className={`text-sm italic p-4 rounded-xl leading-relaxed ${isActive ? 'bg-blue-950/30 text-blue-100 border border-blue-900/30' : 'bg-slate-950/30 text-slate-400'}`}><MessageSquare className="w-4 h-4 mb-2 opacity-50" />{phase.remarks || "No additional remarks."}</div></div>
+                                                            <div className="absolute bottom-0 left-0 w-full h-1 bg-transparent rounded-b-2xl overflow-hidden"><div className={`h-full ${isCompleted ? 'bg-emerald-500' : isActive ? 'bg-blue-500' : 'bg-transparent'}`} style={{width: isCompleted ? '100%' : isActive ? '40%' : '0%'}}></div></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            <div className="absolute -left-[7px] bottom-0 w-4 h-4 bg-slate-800 rounded-full border-2 border-slate-900"></div>
+                                        </div>
+                                    </div>
+                                )}
+                                {presentationSlide === 2 && (
+                                    <div className="max-w-6xl mx-auto h-full"><div className="bg-slate-800/50 rounded-3xl border border-slate-700 overflow-hidden"><div className="p-8 border-b border-slate-700 bg-slate-800 flex items-center gap-4"><ShieldAlert className="w-6 h-6 text-amber-500" /><h2 className="text-xl font-bold text-white">Risk Management Register</h2></div><div className="p-0"><table className="w-full text-left"><thead className="bg-slate-900/50 text-slate-400 text-sm uppercase"><tr><th className="p-6 font-semibold">Risk Factor</th><th className="p-6 font-semibold">Severity</th><th className="p-6 font-semibold">Mitigation Strategy</th></tr></thead><tbody className="divide-y divide-slate-700 text-slate-300 text-sm">{project.risks.map(risk => (<tr key={risk.id} className="hover:bg-slate-700/30 transition-colors"><td className="p-6 font-medium text-white">{risk.title}</td><td className="p-6"><RiskBadge level={risk.level} /></td><td className="p-6 text-slate-400">{risk.mitigation}</td></tr>))}</tbody></table></div></div></div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="bg-slate-900 border-t border-slate-800 p-6 z-50"><div className="flex justify-center gap-6"><button onClick={() => setPresentationSlide(0)} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-medium transition-all ${presentationSlide === 0 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800'}`}><Target className="w-5 h-5" /> Executive Overview</button><button onClick={() => setPresentationSlide(1)} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-medium transition-all ${presentationSlide === 1 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800'}`}><BarChart3 className="w-5 h-5" /> Strategic Roadmap</button><button onClick={() => setPresentationSlide(2)} className={`flex items-center gap-3 px-6 py-3 rounded-full text-sm font-medium transition-all ${presentationSlide === 2 ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800'}`}><ShieldAlert className="w-5 h-5" /> Risk & Governance</button></div></div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans text-slate-900 p-4 md:p-8">
+                    {permissionError && (
+                        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-xl p-6 max-w-lg shadow-2xl">
+                                <h3 className="text-red-600 font-bold text-lg mb-2 flex items-center gap-2">
+                                    <AlertTriangle className="w-5 h-5"/> Database Permission Error
+                                </h3>
+                                <p className="text-slate-600 mb-4 text-sm">
+                                    The app cannot save or load data because the <strong>Firestore Security Rules</strong> are blocking access.
+                                </p>
+                                <div className="bg-slate-100 p-3 rounded text-xs font-mono text-slate-700 mb-4 overflow-x-auto">
+                                    Error: Missing or insufficient permissions.
+                                </div>
+                                <p className="font-bold text-sm text-slate-800 mb-2">How to fix:</p>
+                                <ol className="list-decimal pl-5 text-sm text-slate-600 space-y-1 mb-6">
+                                    <li>Go to your <strong>Firebase Console</strong>.</li>
+                                    <li>Navigate to <strong>Build &gt; Firestore Database</strong>.</li>
+                                    <li>Click the <strong>Rules</strong> tab.</li>
+                                    <li>Change <code>allow read, write: if false;</code> to <code>allow read, write: if true;</code> (or <code>if request.auth != null;</code>).</li>
+                                    <li>Click <strong>Publish</strong>.</li>
+                                </ol>
+                                <button 
+                                    onClick={() => setPermissionError(false)}
+                                    className="w-full bg-slate-800 text-white py-2 rounded-lg font-medium hover:bg-slate-700"
+                                >
+                                    I updated the rules, try again
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div><h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3"><Layout className="w-8 h-8 text-blue-600" />{project.name}</h1><p className="text-slate-500 mt-1">Project Status Tracker</p></div>
+                        <div className="flex flex-col md:flex-row gap-3"><button onClick={handleSave} disabled={isSaving} className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${saveStatus === 'success' ? 'bg-green-100 text-green-700 border border-green-200' : saveStatus === 'error' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'}`}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveStatus === 'success' ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}{isSaving ? 'Saving...' : saveStatus === 'success' ? 'Saved' : 'Save Progress'}</button><div className="flex gap-3 bg-white p-1 rounded-lg border border-slate-200 shadow-sm"><button className="px-4 py-2 rounded-md text-sm font-medium bg-blue-100 text-blue-700">Tracker View</button><button onClick={() => setMode('presentation')} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-2 transition-colors"><Presentation className="w-4 h-4" />Presentation Mode</button></div></div>
+                    </div>
+                    <div className="max-w-6xl mx-auto space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><div className="flex justify-between items-start mb-4"><div className="p-2 bg-blue-50 rounded-lg"><PieChart className="w-6 h-6 text-blue-600" /></div><span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">On Track</span></div><h3 className="text-slate-500 text-sm font-medium">Overall Progress</h3><div className="mt-2 text-3xl font-bold text-slate-800">{progress}%</div><div className="mt-3"><ProgressBar progress={progress} /></div></div>
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm group hover:border-blue-300 transition-colors"><div className="flex justify-between items-start mb-4"><div className="p-2 bg-emerald-50 rounded-lg"><DollarSign className="w-6 h-6 text-emerald-600" /></div><Edit2 className="w-4 h-4 text-slate-300" /></div><h3 className="text-slate-500 text-sm font-medium">Budget (Year 1)</h3><div className="mt-2 flex items-baseline gap-2"><span className="text-lg font-bold text-slate-800">SGD</span><input type="number" value={project.budget} onChange={(e) => handleProjectUpdate('budget', Number(e.target.value))} className="w-24 text-3xl font-bold text-slate-800 border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent" /></div><div className="text-xs text-slate-400 mt-2 flex items-center gap-1">Spent: SGD <input type="number" value={project.spent} onChange={(e) => handleProjectUpdate('spent', Number(e.target.value))} className="w-16 border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent" /></div></div>
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm group hover:border-blue-300 transition-colors"><div className="flex justify-between items-start mb-4"><div className="p-2 bg-violet-50 rounded-lg"><Clock className="w-6 h-6 text-violet-600" /></div><Edit2 className="w-4 h-4 text-slate-300" /></div><h3 className="text-slate-500 text-sm font-medium">Next Milestone</h3><div className="mt-2 space-y-1"><input type="text" value={project.nextMilestoneTitle} onChange={(e) => handleProjectUpdate('nextMilestoneTitle', e.target.value)} className="w-full text-lg font-bold text-slate-800 border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent" /><input type="text" value={project.nextMilestoneDate} onChange={(e) => handleProjectUpdate('nextMilestoneDate', e.target.value)} className="w-full text-sm text-slate-500 border-b border-slate-300 focus:border-blue-500 outline-none bg-transparent" /></div></div>
+                            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><div className="flex justify-between items-start mb-4"><div className="p-2 bg-amber-50 rounded-lg"><AlertTriangle className="w-6 h-6 text-amber-600" /></div><span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{project.risks.length} Active</span></div><h3 className="text-slate-500 text-sm font-medium">Key Risks</h3><div className="mt-2">{project.risks.slice(0,1).map(r => (<div key={r.id} className="text-sm font-medium text-slate-700 truncate">{r.title}</div>))}<p className="text-xs text-slate-400 mt-1">View all details</p></div></div>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 space-y-6">
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-100 flex justify-between items-center"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-slate-500" />Project Roadmap (Edit Mode)</h2></div>
+                                    <div className="p-6"><div className="space-y-8 relative"><div className="absolute left-6 top-4 bottom-4 w-0.5 bg-slate-100"></div>
+                                        {project.phases.map((phase, idx) => (
+                                            <div key={phase.id} className="relative flex gap-6 group">
+                                                <div className={`relative z-10 w-12 h-12 rounded-full border-4 flex items-center justify-center shrink-0 bg-white ${phase.status === 'completed' ? 'border-emerald-100 text-emerald-600' : phase.status === 'in-progress' ? 'border-blue-100 text-blue-600' : 'border-slate-100 text-slate-300'}`}>{phase.status === 'completed' ? <CheckCircle2 className="w-6 h-6" /> : <span className="font-bold text-lg">{idx + 1}</span>}</div>
+                                                <div className="flex-1 bg-slate-50 rounded-lg p-5 border border-transparent hover:border-blue-200 hover:bg-white transition-all">
+                                                    <div className="flex flex-wrap justify-between items-start mb-3 gap-2">
+                                                        <div className="flex-1 space-y-1"><input value={phase.title} onChange={(e) => handlePhaseUpdate(phase.id, 'title', e.target.value)} className="w-full font-bold text-slate-800 text-lg bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none" placeholder="Phase Title" /><div className="flex items-center gap-1 text-sm text-slate-500"><Calendar className="w-3 h-3" /><input value={phase.timeline} onChange={(e) => handlePhaseUpdate(phase.id, 'timeline', e.target.value)} className="bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none w-32" placeholder="Timeline" /></div></div>
+                                                        <StatusBadge status={phase.status} />
+                                                    </div>
+                                                    <textarea value={phase.description} onChange={(e) => handlePhaseUpdate(phase.id, 'description', e.target.value)} className="w-full text-slate-600 text-sm bg-transparent border border-slate-200 rounded p-2 focus:border-blue-500 outline-none mb-4" rows={2} placeholder="Description..." />
+                                                    <div className="mb-4 p-3 rounded-md border bg-amber-50 border-amber-100"><div className="flex items-center gap-2 mb-1"><MessageSquare className="w-3 h-3 text-amber-500" /><span className="text-xs font-bold uppercase text-amber-600">Remarks (Visible in Slide)</span></div><textarea value={phase.remarks} onChange={(e) => handlePhaseUpdate(phase.id, 'remarks', e.target.value)} className="w-full text-slate-700 text-sm bg-transparent focus:outline-none placeholder:text-amber-800/30" rows={1} placeholder="Add strategic notes, blockers, or specific updates here..." /></div>
+                                                    <div className="space-y-2">
+                                                        {phase.tasks.map(task => (
+                                                            <div key={task.id} className="flex items-center gap-3">
+                                                                <div onClick={() => toggleTaskStatus(phase.id, task.id)} className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 cursor-pointer ${task.status === 'completed' ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300 hover:border-blue-400'}`}>{task.status === 'completed' && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}</div>
+                                                                <input value={task.title} onChange={(e) => handleTaskTitleUpdate(phase.id, task.id, e.target.value)} className={`flex-1 bg-transparent border-b border-transparent focus:border-blue-300 outline-none py-1 text-sm ${task.status === 'completed' ? 'text-slate-400 line-through' : 'text-slate-700'}`} />
+                                                                <button onClick={() => handleDeleteTask(phase.id, task.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                            </div>
+                                                        ))}
+                                                        <button onClick={() => handleAddTask(phase.id)} className="mt-2 text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50 w-fit transition-colors"><Plus className="w-3 h-3" /> Add Task</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div></div>
+                                </div>
+                            </div>
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><ListTodo className="w-5 h-5 text-slate-500" /> Quick Stats</h3><div className="space-y-4"><div className="flex justify-between items-center py-2 border-b border-slate-50"><span className="text-slate-500 text-sm">Total Phases</span><span className="font-medium">{project.phases.length}</span></div><div className="flex justify-between items-center py-2 border-b border-slate-50"><span className="text-slate-500 text-sm">Completed Tasks</span><span className="font-medium">{completedTasks} / {totalTasks}</span></div></div></div>
+                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6"><div className="flex justify-between items-center mb-4"><h3 className="font-bold text-slate-800 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-slate-500" /> Risk Log</h3><button className="text-blue-600 hover:bg-blue-50 p-1 rounded"><Plus className="w-4 h-4"/></button></div><div className="space-y-3">{project.risks.map(risk => (<div key={risk.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100"><div className="flex justify-between items-start mb-2"><span className="font-medium text-slate-700 text-sm">{risk.title}</span><RiskBadge level={risk.level} /></div><p className="text-xs text-slate-500 italic">Mitigation: {risk.mitigation}</p></div>))}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<ProjectTracker />);
+    </script>
+</body>
+</html>
